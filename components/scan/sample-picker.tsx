@@ -23,6 +23,8 @@ export function SamplePicker({ onPick, disabled }: { onPick: (id: string) => voi
             key={code}
             variant={code === country ? "primary" : "secondary"}
             aria-pressed={code === country}
+            data-pulse-event="sample_country_filter"
+            data-pulse-label={code}
             onClick={() => setCountry(code)}
           >
             {PROFILES[code].name}

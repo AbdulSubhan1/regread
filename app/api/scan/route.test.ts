@@ -9,6 +9,9 @@ vi.mock("@/lib/scan/samples-server", () => ({
     id === "pk-clean" ? { data: new Uint8Array([1]), mediaType: "image/jpeg" } : null,
 }));
 
+const pulse = { reportBlocked: vi.fn(), reportApiCall: vi.fn(), reportGlobalCap: vi.fn() };
+vi.mock("@/lib/pulse/server", () => pulse);
+
 const { OPTIONS, POST } = await import("./route");
 
 const result = { country: "PK", source: "ai" } as ScanResult;
@@ -24,6 +27,7 @@ beforeEach(() => {
   resetMemoryStore();
   scanCard.mockReset();
   scanCard.mockResolvedValue(result);
+  Object.values(pulse).forEach((f) => f.mockReset());
 });
 
 type PostOptions = { ip?: string; signal?: AbortSignal; origin?: string | null; headers?: Record<string, string> };
@@ -253,4 +257,89 @@ test("the 4th upload in one minute is a 429 burst and doesn't use a daily run", 
   expect(res.status).toBe(429);
   expect(await res.json()).toMatchObject({ error: "limit", reason: "burst" });
   expect((await post({ file: photo() })).headers.get("X-Runs-Remaining")).toBe("6");
+});
+
+const blockedFor = () => pulse.reportBlocked.mock.calls.map(([, reason]) => reason);
+
+test("each refused upload is reported to Pulse with its reason and the hashed visitor", async () => {
+  await post({ file: photo() }, { origin: null });
+  await post({ file: photo() }, { headers: { "content-length": String(50 * 1024 * 1024) } });
+  await post({
+    file: photo(
+      "image/jpeg",
+      1000,
+      [..."<html>"].map((c) => c.charCodeAt(0)),
+    ),
+  });
+  await post({ file: pdfFile(1, 1024 * 1024 + 1) });
+  await post({ file: pdfFile(3) });
+  expect(blockedFor()).toEqual(["bad_origin", "too_large", "bad_file_type", "pdf_too_big", "pdf_too_many_pages"]);
+  const [visitor] = pulse.reportBlocked.mock.calls[0];
+  expect(visitor).toMatch(/^[0-9a-f]{32}$/);
+});
+
+test("an empty form or an unknown sample is a mistake, not an attack, and isn't reported", async () => {
+  await post({});
+  await post({ sampleId: "xx-nope" });
+  expect(pulse.reportBlocked).not.toHaveBeenCalled();
+});
+
+test("hitting the visitor's daily limit is reported; the app's cap is logged instead", async () => {
+  vi.stubEnv("AI_DAILY_LIMIT", "1");
+  await post({ file: photo() });
+  await post({ file: photo() });
+  expect(blockedFor()).toEqual(["daily_limit"]);
+  vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "1");
+  await post({ file: photo() }, { ip: "198.51.100.9" });
+  expect(pulse.reportGlobalCap).toHaveBeenCalledTimes(1);
+});
+
+test("the burst limit is reported", async () => {
+  const minute = Date.now() + 61_000;
+  for (let i = 0; i < 4; i++) {
+    vi.setSystemTime(minute);
+    const form = new FormData();
+    form.append("file", photo());
+    await POST(
+      new Request("http://localhost/api/scan", {
+        method: "POST",
+        body: form,
+        headers: { "x-forwarded-for": "203.0.113.7", origin: "http://localhost" },
+      }),
+    );
+  }
+  expect(blockedFor()).toEqual(["burst_limit"]);
+});
+
+test("each AI call is reported with its status and time; a cached sample makes none", async () => {
+  vi.stubEnv("AI_MODEL", "gemini-test");
+  await post({ file: photo() });
+  await post({ sampleId: "pk-clean" });
+  await post({ sampleId: "pk-clean" });
+  expect(pulse.reportApiCall).toHaveBeenCalledTimes(2);
+  expect(pulse.reportApiCall).toHaveBeenCalledWith({
+    method: "POST",
+    host: "generativelanguage.googleapis.com",
+    path: "/v1beta/models/gemini-test:generateContent",
+    status: 200,
+    ms: expect.any(Number),
+  });
+});
+
+test("a failed AI call is reported with the provider's status, or none when no answer came", async () => {
+  scanCard.mockRejectedValueOnce(Object.assign(new Error("quota"), { statusCode: 429 }));
+  await post({ file: photo() });
+  scanCard.mockRejectedValueOnce(new Error("offline"));
+  await post({ file: photo() });
+  expect(pulse.reportApiCall.mock.calls.map(([c]) => [c.status, c.error])).toEqual([
+    [429, "Error"],
+    [null, "Error"],
+  ]);
+});
+
+test("after the SDK's retry, the status comes from the last attempt", async () => {
+  const retry = Object.assign(new Error("retries used"), { name: "AI_RetryError", lastError: { statusCode: 503 } });
+  scanCard.mockRejectedValueOnce(retry);
+  await post({ file: photo() });
+  expect(pulse.reportApiCall.mock.calls[0][0]).toMatchObject({ status: 503, error: "AI_RetryError" });
 });

@@ -98,7 +98,12 @@ export function ResultForm(props: Props) {
       </div>
       <div className="mt-6 flex flex-col gap-3 md:flex-row">
         <Button type="submit">Confirm details</Button>
-        <Button variant="secondary" onClick={props.onRestart}>
+        <Button
+          variant="secondary"
+          onClick={props.onRestart}
+          data-pulse-event="scan_restarted"
+          data-pulse-label="result"
+        >
           Scan another card
         </Button>
       </div>

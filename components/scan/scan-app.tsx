@@ -5,6 +5,7 @@ import { ACCEPTED_TYPES, MAX_PDF_BYTES, MAX_UPLOAD_BYTES } from "@/constants/con
 import { COPY, UPLOAD_ERRORS } from "@/constants/copy";
 import { Picture } from "@/components/ui";
 import { ocrFallback } from "@/lib/client/ocr-fallback";
+import { track } from "@/lib/client/pulse";
 import { shrinkImage } from "@/lib/client/shrink-image";
 import { checkRead } from "@/lib/profiles/check";
 import { FIELDS, type CountryCode, type FieldName, type RawRead, type ScanResult } from "@/lib/profiles/types";
@@ -63,6 +64,7 @@ export function ScanApp() {
   }, [preview]);
 
   function showResult(previewUrl: string, result: ScanResult) {
+    track("card_read", `${result.source} · ${result.country ?? "unknown"}`);
     setValues(valuesOf(result));
     setEdited({});
     setErrors({});
@@ -75,6 +77,7 @@ export function ScanApp() {
     try {
       showResult(previewUrl, await ocrFallback(await getImage(), null));
     } catch {
+      track("scan_failed", "device");
       setPhase({ kind: "idle" });
       setUploadError(COPY.network);
     }
@@ -83,19 +86,30 @@ export function ScanApp() {
   function handle(answer: ApiAnswer, previewUrl: string, isPdf: boolean, getImage: () => Promise<Blob>) {
     const step = nextStep(answer, isPdf);
     if (step.kind === "result") return showResult(previewUrl, step.result);
-    if (step.kind === "ocr") return fallback(previewUrl, getImage);
+    if (step.kind === "ocr") {
+      track("ocr_fallback", answer.ok ? undefined : String(answer.status));
+      return fallback(previewUrl, getImage);
+    }
+    track("upload_refused", answer.ok ? undefined : (answer.error ?? String(answer.status)));
     setPhase({ kind: "idle" });
     setUploadError(step.message);
   }
 
+  // Refused in the browser, before any upload
+  function refuse(reason: keyof typeof UPLOAD_ERRORS) {
+    track("upload_refused", reason);
+    setUploadError(UPLOAD_ERRORS[reason]);
+  }
+
   async function onFile(file: File) {
     setUploadError(null);
-    if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)) return setUploadError(UPLOAD_ERRORS.heic);
-    if (!(ACCEPTED_TYPES as readonly string[]).includes(file.type)) return setUploadError(UPLOAD_ERRORS.type);
+    if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)) return refuse("heic");
+    if (!(ACCEPTED_TYPES as readonly string[]).includes(file.type)) return refuse("type");
     const isPdf = file.type === "application/pdf";
-    if (isPdf && file.size > MAX_PDF_BYTES) return setUploadError(UPLOAD_ERRORS.pdfSize);
+    if (isPdf && file.size > MAX_PDF_BYTES) return refuse("pdfSize");
     const body = isPdf ? file : await shrinkImage(file);
-    if (body.size > MAX_UPLOAD_BYTES) return setUploadError(UPLOAD_ERRORS.size);
+    if (body.size > MAX_UPLOAD_BYTES) return refuse("size");
+    track("card_uploaded", isPdf ? "pdf" : "photo");
 
     const previewUrl = isPdf ? "" : URL.createObjectURL(body);
     setPhase({ kind: "scanning", preview: previewUrl, message: "Reading your card…" });
@@ -105,6 +119,7 @@ export function ScanApp() {
   }
 
   async function onSample(id: string) {
+    track("sample_picked", id);
     setUploadError(null);
     const previewUrl = `/samples/${id}.jpg`;
     setPhase({ kind: "scanning", preview: previewUrl, message: "Reading the sample card…" });
@@ -116,6 +131,7 @@ export function ScanApp() {
   // Re-checks what was read with the new country's rules; fields the visitor typed in keep their value
   function onCountry(country: CountryCode | null) {
     if (phase.kind !== "result") return;
+    track("country_changed", country ?? "none");
     const result = checkRead(rawReadOf(phase.result), country, phase.result.source);
     setValues(keepEdits(valuesOf(result), values, edited));
     setErrors({});
@@ -129,9 +145,11 @@ export function ScanApp() {
     setErrors(check.errors);
     const first = Object.keys(check.errors)[0];
     if (first) {
+      track("confirm_invalid", first);
       document.getElementById(`field-${first}`)?.focus();
       return;
     }
+    track("details_confirmed", country ?? "none");
     setPhase({
       kind: "confirmed",
       preview: phase.preview,
