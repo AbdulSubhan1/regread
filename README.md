@@ -32,15 +32,16 @@ Without Upstash env vars, local dev keeps the daily counters in memory.
 
 ## Environment
 
-| Variable                                                              | What                                                             |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `AI_PROVIDER`                                                         | `google` (the only provider installed)                           |
-| `AI_MODEL`                                                            | e.g. `gemini-3.5-flash-lite`                                     |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                        | Free key from Google AI Studio                                   |
-| `AI_DAILY_LIMIT`                                                      | Uploads per visitor per UTC day (default 10)                     |
-| `AI_GLOBAL_DAILY_LIMIT`                                               | AI calls for the whole app per UTC day (default 200)             |
-| `VISITOR_SALT`                                                        | Secret for hashing visitor IPs; required in production           |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` (or `KV_REST_API_URL` / `_TOKEN`) | Daily counters and cached sample results; required in production |
+| Variable                                                              | What                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `AI_PROVIDER`                                                         | `google` (the only provider installed)                                                                 |
+| `AI_MODEL`                                                            | e.g. `gemini-3.5-flash-lite`                                                                           |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                        | Free key from Google AI Studio                                                                         |
+| `AI_DAILY_LIMIT`                                                      | Uploads per visitor per UTC day (default 10)                                                           |
+| `AI_GLOBAL_DAILY_LIMIT`                                               | AI calls for the whole app per UTC day (default 200)                                                   |
+| `ALLOWED_ORIGINS`                                                     | Sites that may call `/api/scan` from their pages, comma-separated (e.g. `https://brokwise.vercel.app`) |
+| `VISITOR_SALT`                                                        | Secret for hashing visitor IPs; required in production                                                 |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` (or `KV_REST_API_URL` / `_TOKEN`) | Daily counters and cached sample results; required in production                                       |
 
 ## Scripts
 
@@ -52,6 +53,13 @@ Without Upstash env vars, local dev keeps the daily counters in memory.
 | `npm run test:e2e` | Playwright: sample flow and confirm errors (uses a real AI call)                  |
 | `npm run samples`  | Re-render the 16 sample cards from `samples/templates`                            |
 | `npm run measure`  | Run the real pipeline on all samples and rewrite `docs/accuracy.md` (16 AI calls) |
+
+## Using it from another site
+
+`POST https://regread.vercel.app/api/scan` with a `multipart/form-data` body: `file` (JPEG, PNG, WebP or PDF, max 4 MB) or
+`sampleId`. The answer is the result shape in `lib/profiles/types.ts` (`ScanResult`). The calling site must be in
+`ALLOWED_ORIGINS`, must show its own consent note before sending a visitor's card, and must let the visitor check
+the values. Brokwise's car form uses it this way.
 
 ## Adding a country
 
