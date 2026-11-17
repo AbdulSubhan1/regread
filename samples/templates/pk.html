@@ -1,0 +1,32 @@
+<!-- Made-up design for demos. Not based on any government document. -->
+<style>
+  .pk { background: #f3efe2; color: #23301f; border: 2px solid #b9b08f;
+    background-image: repeating-linear-gradient(0deg, rgba(60, 90, 50, 0.07) 0 1px, transparent 1px 44px); }
+  .pk header { display: flex; justify-content: space-between; align-items: center; padding: 26px 36px 10px; border-bottom: 3px double #6d7d55; }
+  .pk h1 { margin: 0; font-size: 28px; letter-spacing: 2px; color: #3e5a2b; }
+  .pk header small { display: block; font-size: 14px; color: #6b6a55; letter-spacing: 0; margin-top: 4px; }
+  .pk .ur { font-family: "Noto Nastaliq Urdu"; font-size: 30px; color: #3e5a2b; }
+  .pk .page { position: absolute; top: 26px; right: 50%; font-size: 13px; color: #8a866c; }
+  .pk table { border-collapse: collapse; width: calc(100% - 72px); margin: 14px 36px; font-size: 21px; }
+  .pk td { padding: 7px 4px; border-bottom: 1px dashed #b9b08f; height: 34px; }
+  .pk td.l { width: 230px; color: #5d5c48; font-size: 17px; }
+  .pk td.v { font-weight: 700; }
+  .pk td.u { text-align: right; font-family: "Noto Nastaliq Urdu"; font-size: 18px; color: #5d5c48; width: 180px; }
+</style>
+<div class="card pk">
+  <header>
+    <h1>MOTOR VEHICLE REGISTRATION<small>Pakistan · demo registration book page · not an official document</small></h1>
+    <div class="ur">گاڑی کی رجسٹریشن</div>
+  </header>
+  <table>
+    <tr><td class="l">Registration No.</td><td class="v mono">{{plate}}</td><td class="u">رجسٹریشن نمبر</td></tr>
+    <tr><td class="l">Owner's Name</td><td class="v">{{owner}}</td><td class="u">مالک کا نام</td></tr>
+    <tr><td class="l">Maker</td><td class="v">{{make}}</td><td class="u">بنانے والا</td></tr>
+    <tr><td class="l">Model</td><td class="v">{{model}}</td><td class="u">ماڈل</td></tr>
+    <tr><td class="l">Year of Manufacture</td><td class="v mono">{{year}}</td><td class="u">سال ساخت</td></tr>
+    <tr><td class="l">Chassis No.</td><td class="v mono">{{chassis}}</td><td class="u">چیسس نمبر</td></tr>
+    <tr><td class="l">Engine No.</td><td class="v mono">{{engine}}</td><td class="u">انجن نمبر</td></tr>
+    <tr><td class="l">Date of Registration</td><td class="v mono">{{date}}</td><td class="u">تاریخ رجسٹریشن</td></tr>
+  </table>
+  <div class="watermark">SPECIMEN · DEMO</div>
+</div>
