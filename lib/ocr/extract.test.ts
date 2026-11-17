@@ -65,3 +65,33 @@ test("text that isn't a card gives empty fields and no country", () => {
   expect(r.country).toBeNull();
   expect(Object.values(r.fields).every((f) => f.status === "empty")).toBe(true);
 });
+
+// What English-only Tesseract really produced on the UAE sample: Arabic labels come back as junk words
+const aeOcrJunk = `Traffic Plate No. Dubai A 12345 sll 8)
+Owner Sample Person One alll
+Make Toyota EE
+Model Land Cruiser Shall
+Model Year 2021 gall ds
+Chassis No. SMPAE21LC70012345 olall pd)
+Engine No. 1VD-7712345 Ayonall By
+Reg. Date 05/03/2021 Jaa`;
+
+test("junk words after a value are dropped, field by field", () => {
+  const r = extractFromText(aeOcrJunk, null);
+  expect(r.country).toBe("AE");
+  expect(r.fields.plate.value).toBe("DUBAI A 12345");
+  expect(r.fields.make.value).toBe("Toyota");
+  expect(r.fields.year.value).toBe("2021");
+  expect(r.fields.chassisNumber.value).toBe("SMPAE21LC70012345");
+  expect(r.fields.engineNumber.value).toBe("1VD-7712345");
+  expect(r.fields.registrationDate.value).toBe("2021-03-05");
+});
+
+test("a model keeps at most three words", () => {
+  expect(extractFromText(aeOcrJunk, "AE").fields.model.value).toBe("Land Cruiser Shall");
+  expect(extractFromText("Model LX 570 abc def", "QA").fields.model.value).toBe("LX 570 abc");
+});
+
+test("a labelled line with nothing of the right shape stays empty", () => {
+  expect(extractFromText("Model Year gall ds", "AE").fields.year.status).toBe("empty");
+});

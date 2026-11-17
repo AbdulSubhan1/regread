@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+/* The only place colours, fonts and radii are defined. Use the token classes. */
+@theme {
+  --color-paper: #f6f4ee;
+  --color-card: #ffffff;
+  --color-ink: #16213a;
+  --color-ink-soft: #4d566b;
+  --color-line: #e2ddd0;
+  --color-brand: #0f6e66;
+  --color-brand-deep: #0a524c;
+  --color-brand-soft: #d9efec;
+  --color-ok: #166534;
+  --color-ok-soft: #dcf5e3;
+  --color-check: #92400e;
+  --color-check-soft: #fdf0d2;
+  --color-flag: #b42318;
+  --color-flag-soft: #fde4e1;
+
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --radius-box: 0.875rem;
+
+  --animate-rise: rise 0.35s ease-out both;
+  --animate-scan: scan 1.4s ease-in-out infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes scan {
+    0%,
+    100% {
+      top: 0;
+    }
+    50% {
+      top: calc(100% - 4px);
+    }
+  }
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

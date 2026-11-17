@@ -1,5 +1,7 @@
 import { PROFILES } from "@/lib/profiles";
 import { checkField, checkRead } from "@/lib/profiles/check";
+import { canonicalMake } from "@/lib/profiles/makes";
+import { checkPlate } from "@/lib/profiles/plate";
 import {
   COUNTRY_CODES,
   FIELDS,
@@ -36,13 +38,39 @@ function valueAfter(line: string, label: RegExp): string {
     .trim();
 }
 
+const FRAME_TOKEN = /\b[A-Z0-9]{2,6}[- ]\d{5,8}\b/;
+const MAX_MODEL_WORDS = 3;
+
+/** The longest run of leading words that one of the joined pieces accepts. */
+function leadingWords(value: string, accepts: (candidate: string) => boolean): string | undefined {
+  const words = value.split(" ");
+  for (let n = words.length; n > 0; n--) {
+    const candidate = words.slice(0, n).join(" ");
+    if (accepts(candidate)) return candidate;
+  }
+}
+
+// English-only OCR turns the Arabic/Urdu label after a value into junk words. Each field keeps only its own shape.
+const TRIM: Partial<Record<FieldName, (value: string) => string | undefined>> = {
+  year: (v) => v.match(/\b(19|20)\d{2}\b/)?.[0],
+  chassisNumber: (v) => v.toUpperCase().match(VIN_TOKEN)?.[0] ?? v.toUpperCase().match(FRAME_TOKEN)?.[0],
+  registrationDate: (v) => v.match(DATE)?.[0],
+  engineNumber: (v) => v.split(" ").find((word) => /\d/.test(word)),
+  plate: (v) =>
+    leadingWords(v, (c) => COUNTRY_CODES.some((code) => "value" in checkPlate(c, PROFILES[code].plate))) ?? v,
+  make: (v) => leadingWords(v, (c) => canonicalMake(c).known) ?? v.split(" ")[0],
+  model: (v) => v.split(" ").slice(0, MAX_MODEL_WORDS).join(" "),
+};
+
 function findValues(text: string): Partial<Record<FieldName, string>> {
   const found: Partial<Record<FieldName, string>> = {};
   for (const line of text.split(/\r?\n/)) {
     if (OWNER.test(line)) continue;
     const hit = LABELS.find(([name, label]) => !found[name] && label.test(line));
     if (hit) {
-      const value = valueAfter(line, hit[1]);
+      const raw = valueAfter(line, hit[1]);
+      const trim = TRIM[hit[0]];
+      const value = raw && (trim ? trim(raw) : raw);
       if (value) found[hit[0]] = value;
     }
   }
