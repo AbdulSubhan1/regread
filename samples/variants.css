@@ -1,0 +1,87 @@
+/* Shared by every template. The render script sets body.variant-<name>. */
+body {
+  margin: 0;
+  background: #ffffff;
+  font-family: "Noto Sans", "DejaVu Sans", sans-serif;
+}
+#stage {
+  display: inline-block;
+  padding: 28px;
+  background: #f1f1ee;
+}
+.card {
+  position: relative;
+  overflow: hidden;
+  width: 1000px;
+  height: 630px;
+  box-sizing: border-box;
+  border-radius: 22px;
+}
+.watermark {
+  position: absolute;
+  top: 255px;
+  left: -60px;
+  width: 1120px;
+  text-align: center;
+  transform: rotate(-20deg);
+  font:
+    800 88px/1 "DejaVu Sans",
+    sans-serif;
+  letter-spacing: 6px;
+  color: rgba(200, 30, 45, 0.17);
+  border-top: 6px solid rgba(200, 30, 45, 0.17);
+  border-bottom: 6px solid rgba(200, 30, 45, 0.17);
+  padding: 10px 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.mono {
+  font-family: "DejaVu Sans Mono", monospace;
+  letter-spacing: 1px;
+}
+
+.variant-blurry .card {
+  filter: blur(1.7px);
+}
+
+.variant-tilted #stage {
+  padding: 120px 130px;
+  background:
+    repeating-linear-gradient(98deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 19px),
+    linear-gradient(180deg, #8a5a35, #6d4426);
+}
+.variant-tilted .card {
+  transform: perspective(1500px) rotateX(10deg) rotateZ(-7deg);
+  box-shadow: 24px 34px 44px rgba(0, 0, 0, 0.45);
+}
+
+.variant-screen #stage {
+  padding: 80px 90px;
+  background: radial-gradient(ellipse at 50% 40%, #2b2f36, #0b0c0f);
+}
+.variant-screen .card {
+  transform: perspective(1300px) rotateY(-11deg) skewY(-1.2deg);
+  filter: contrast(0.82) brightness(1.1) saturate(0.75);
+}
+.variant-screen .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.09) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.05) 0 1px,
+      rgba(0, 255, 0, 0.05) 1px 2px,
+      rgba(0, 0, 255, 0.05) 2px 3px
+    ),
+    repeating-linear-gradient(31deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 7px);
+}
+.variant-screen .card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  background: radial-gradient(ellipse at 72% 18%, rgba(255, 255, 255, 0.6), transparent 42%);
+}

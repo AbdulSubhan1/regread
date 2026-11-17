@@ -3,5 +3,6 @@ node_modules
 docs/superpowers
 package-lock.json
 public/samples
+samples/templates
 playwright-report
 test-results

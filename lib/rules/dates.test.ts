@@ -16,3 +16,12 @@ test.each([
 test("toIsoDate formats a UTC date", () => {
   expect(toIsoDate(new Date(Date.UTC(2024, 2, 11)))).toBe("2024-03-11");
 });
+
+test.each([
+  ["01/09/1445 هـ", { d: 1, m: 9, y: 1445 }],
+  ["01/09/1445هـ", { d: 1, m: 9, y: 1445 }],
+  ["01/09/1445 AH", { d: 1, m: 9, y: 1445 }],
+  ["05/03/2021 م", { d: 5, m: 3, y: 2021 }],
+])("parseDmy ignores a calendar mark after the date: %s", (raw, expected) => {
+  expect(parseDmy(raw)).toEqual(expected);
+});

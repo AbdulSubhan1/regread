@@ -1,0 +1,35 @@
+<!-- Made-up design for demos. Not based on any government card. -->
+<style>
+  .ae { background: linear-gradient(135deg, #e7f0ec 0%, #f6efe1 100%); color: #1d2a2a; }
+  .ae .band { height: 96px; background: #12605d; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 36px; }
+  .ae .band h1 { margin: 0; font-size: 34px; letter-spacing: 3px; }
+  .ae .band .ar { font-family: "Noto Naskh Arabic"; font-size: 36px; }
+  .ae .sub { padding: 8px 36px 0; font-size: 15px; color: #4c6160; }
+  .ae .body { display: flex; gap: 30px; padding: 18px 36px; }
+  .ae .seal { width: 150px; height: 150px; border-radius: 50%; flex: none; margin-top: 10px;
+    background: repeating-radial-gradient(circle, #c9b98d 0 6px, #e9dfc2 6px 12px); display: grid; place-items: center; }
+  .ae .seal span { background: #12605d; color: #fff; font-weight: 800; font-size: 34px; width: 74px; height: 74px; border-radius: 16px; display: grid; place-items: center; }
+  .ae table { border-collapse: collapse; width: 100%; font-size: 21px; }
+  .ae td { padding: 7px 6px; border-bottom: 1px solid rgba(18, 96, 93, 0.18); }
+  .ae td.l { color: #4c6160; font-size: 16px; width: 170px; }
+  .ae td.v { font-weight: 700; }
+  .ae td.a { text-align: right; font-family: "Noto Naskh Arabic"; color: #4c6160; font-size: 18px; width: 150px; }
+</style>
+<div class="card ae">
+  <div class="band"><h1>VEHICLE LICENCE</h1><div class="ar">رخصة مركبة</div></div>
+  <div class="sub">United Arab Emirates · demo card design · not an official document</div>
+  <div class="body">
+    <div class="seal"><span>RR</span></div>
+    <table>
+      <tr><td class="l">Traffic Plate No.</td><td class="v mono">{{plate}}</td><td class="a">رقم اللوحة</td></tr>
+      <tr><td class="l">Owner</td><td class="v">{{owner}}</td><td class="a">المالك</td></tr>
+      <tr><td class="l">Make</td><td class="v">{{make}}</td><td class="a">الصانع</td></tr>
+      <tr><td class="l">Model</td><td class="v">{{model}}</td><td class="a">الطراز</td></tr>
+      <tr><td class="l">Model Year</td><td class="v mono">{{year}}</td><td class="a">سنة الصنع</td></tr>
+      <tr><td class="l">Chassis No.</td><td class="v mono">{{chassis}}</td><td class="a">رقم الشاصي</td></tr>
+      <tr><td class="l">Engine No.</td><td class="v mono">{{engine}}</td><td class="a">رقم المحرك</td></tr>
+      <tr><td class="l">Reg. Date</td><td class="v mono">{{date}}</td><td class="a">تاريخ التسجيل</td></tr>
+    </table>
+  </div>
+  <div class="watermark">SPECIMEN · DEMO</div>
+</div>

@@ -1,0 +1,31 @@
+<!-- Made-up design for demos. Not based on any government card. -->
+<style>
+  .sa { background: linear-gradient(160deg, #eef0f7 0%, #e3e8f2 60%, #f2ece3 100%); color: #20263a; direction: rtl; font-family: "Noto Naskh Arabic", "DejaVu Sans"; }
+  .sa header { display: flex; justify-content: space-between; align-items: center; padding: 22px 36px; background: #3b3f7a; color: #fff; }
+  .sa h1 { margin: 0; font-size: 34px; font-weight: 700; }
+  .sa header small { font-family: "DejaVu Sans"; font-size: 14px; letter-spacing: 2px; opacity: 0.85; direction: ltr; }
+  .sa .note { padding: 6px 36px 0; font-size: 16px; color: #5b6078; }
+  .sa .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 36px; padding: 14px 36px; }
+  .sa .f { border-bottom: 1px solid rgba(59, 63, 122, 0.2); padding: 6px 0; }
+  .sa .f b { display: block; font-size: 16px; color: #5b6078; font-weight: 400; }
+  .sa .f span { font-size: 23px; font-weight: 700; }
+  .sa .plate { position: absolute; left: 36px; bottom: 30px; direction: ltr; border: 3px solid #20263a; border-radius: 10px; background: #fff; width: 270px; text-align: center; }
+  .sa .plate div { padding: 4px 0; font-size: 28px; font-weight: 800; }
+  .sa .plate div + div { border-top: 2px solid #20263a; font-family: "DejaVu Sans Mono"; }
+</style>
+<div class="card sa">
+  <header><h1>استمارة مركبة</h1><small>VEHICLE REGISTRATION · DEMO</small></header>
+  <div class="note">المملكة العربية السعودية · تصميم تجريبي وليس وثيقة رسمية</div>
+  <div class="grid">
+    <div class="f"><b>المالك</b><span>{{owner}}</span></div>
+    <div class="f"><b>رقم اللوحة</b><span class="mono" dir="ltr">{{plate}}</span></div>
+    <div class="f"><b>الماركة</b><span>{{makeAr}} {{make}}</span></div>
+    <div class="f"><b>الطراز</b><span>{{model}}</span></div>
+    <div class="f"><b>سنة الصنع</b><span>{{year}}</span></div>
+    <div class="f"><b>رقم الهيكل</b><span class="mono" dir="ltr">{{chassis}}</span></div>
+    <div class="f"><b>رقم المحرك</b><span class="mono" dir="ltr">{{engine}}</span></div>
+    <div class="f"><b>تاريخ التسجيل</b><span dir="ltr">{{date}} هـ</span></div>
+  </div>
+  <div class="plate"><div>{{plateAr}}</div><div>{{plate}}</div></div>
+  <div class="watermark">SPECIMEN · DEMO</div>
+</div>

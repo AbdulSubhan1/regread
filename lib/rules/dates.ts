@@ -7,6 +7,8 @@ export type DayMonthYear = { d: number; m: number; y: number };
 export function parseDmy(raw: string): DayMonthYear | null {
   const m = toWesternDigits(raw)
     .trim()
+    // Cards add a calendar mark after the date: هـ / AH (Hijri), م / AD (Gregorian)
+    .replace(/\s*(هـ|ه|AH|H|م|AD)\.?$/i, "")
     .match(/^(\d{1,2})\s*[/\-.\s]\s*(\d{1,2})\s*[/\-.\s]\s*(\d{4})$/);
   return m ? { d: Number(m[1]), m: Number(m[2]), y: Number(m[3]) } : null;
 }
