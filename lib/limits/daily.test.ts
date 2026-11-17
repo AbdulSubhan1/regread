@@ -24,8 +24,15 @@ test("a refused run doesn't use up the visitor's or the app's count", async () =
   vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "1");
   expect((await takeRun("a")).ok).toBe(true);
   expect((await takeRun("b")).ok).toBe(false);
-  await refundRun("a");
+  vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "2");
   expect((await takeRun("b")).ok).toBe(true);
+});
+
+test("a refund gives the visitor's run back but not the app's: the AI call was still made", async () => {
+  vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "1");
+  expect((await takeRun("a")).ok).toBe(true);
+  await refundRun("a");
+  expect(await takeRun("b")).toMatchObject({ ok: false, reason: "global" });
 });
 
 test("a refund gives one run back", async () => {

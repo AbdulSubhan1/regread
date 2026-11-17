@@ -32,7 +32,7 @@ edit and confirm before anything is used.
 
 - 16 made-up specimen cards (4 countries × clean, blurry, tilted, photo of a screen): **112/112 fields right, 16/16
   countries detected** with Gemini Flash Lite. Honest note: invented cards are easier than real ones.
-- 156 unit tests, including Hijri conversion against known dates and the frame-number rule.
+- 172 unit tests, including Hijri conversion against known dates and the frame-number rule.
 
 ## What I'd do next
 

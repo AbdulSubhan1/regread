@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { resetMemoryStore } from "@/lib/store/redis";
 import type { ScanResult } from "@/lib/profiles/types";
 
@@ -13,18 +13,25 @@ const { POST } = await import("./route");
 
 const result = { country: "PK", source: "ai" } as ScanResult;
 
+afterEach(() => vi.unstubAllEnvs());
+
 beforeEach(() => {
   resetMemoryStore();
   scanCard.mockReset();
   scanCard.mockResolvedValue(result);
 });
 
-function post(fields: Record<string, string | File>, ip = "203.0.113.7") {
+function post(fields: Record<string, string | File>, ip = "203.0.113.7", signal?: AbortSignal) {
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
-  return POST(
-    new Request("http://localhost/api/scan", { method: "POST", body: form, headers: { "x-forwarded-for": ip } }),
-  );
+  const req = new Request("http://localhost/api/scan", {
+    method: "POST",
+    body: form,
+    headers: { "x-forwarded-for": ip },
+  });
+  // On the server req.signal aborts when the client drops; here we hand the route a signal we control
+  if (signal) Object.defineProperty(req, "signal", { value: signal });
+  return POST(req);
 }
 
 const photo = (type = "image/jpeg", size = 1000) => new File([new Uint8Array(size)], "card.jpg", { type });
@@ -92,4 +99,29 @@ test("a failed sample read is a 502 and isn't cached", async () => {
   expect((await post({ sampleId: "pk-clean" })).status).toBe(502);
   expect((await post({ sampleId: "pk-clean" })).status).toBe(200);
   expect(scanCard).toHaveBeenCalledTimes(2);
+});
+
+test("a failed upload still counts against the app's daily cap", async () => {
+  vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "1");
+  scanCard.mockRejectedValueOnce(new Error("quota"));
+  expect((await post({ file: photo() })).status).toBe(502);
+  expect(await (await post({ file: photo() }, "198.51.100.9")).json()).toMatchObject({ reason: "global" });
+});
+
+test("a failed sample read still counts against the app's daily cap", async () => {
+  vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "1");
+  scanCard.mockRejectedValueOnce(new Error("quota"));
+  expect((await post({ sampleId: "pk-clean" })).status).toBe(502);
+  expect((await post({ sampleId: "pk-clean" })).status).toBe(429);
+});
+
+test("a visitor who drops the request gets no refund", async () => {
+  vi.stubEnv("AI_DAILY_LIMIT", "1");
+  const abort = new AbortController();
+  scanCard.mockImplementationOnce(async () => {
+    abort.abort();
+    throw new Error("aborted");
+  });
+  await post({ file: photo() }, "203.0.113.7", abort.signal);
+  expect((await post({ file: photo() })).status).toBe(429);
 });

@@ -51,6 +51,16 @@ describe("registration dates", () => {
     expect(r.fields.registrationDate.value).toBe("2024-03-11");
   });
 
+  test("a Saudi Gregorian date the model wrongly called Hijri is still read as Gregorian", () => {
+    const r = checkRead(
+      read({ registrationDate: "12/05/2019" }, { registrationDateCalendar: "hijri" }),
+      "SA",
+      "ai",
+      now,
+    );
+    expect(r.fields.registrationDate).toMatchObject({ value: "2019-05-12", status: "ok" });
+  });
+
   test("a Qatari card has no Hijri dates, so 1445 is flagged", () => {
     const r = checkRead(read({ registrationDate: "01/09/1445" }), "QA", "ai", now);
     expect(r.fields.registrationDate.status).toBe("flagged");
@@ -125,7 +135,7 @@ describe("statuses", () => {
 });
 
 test("checkField applies one rule on its own (used by the confirm step)", () => {
-  expect(checkField("plate", "LEA-1234", PROFILES.PK, "unknown", now)).toEqual({ value: "LEA-1234" });
-  expect(checkField("plate", "LEA-1234", PROFILES.AE, "unknown", now)).toHaveProperty("reason");
-  expect(checkField("model", "x".repeat(41), PROFILES.AE, "unknown", now)).toHaveProperty("reason");
+  expect(checkField("plate", "LEA-1234", PROFILES.PK, now)).toEqual({ value: "LEA-1234" });
+  expect(checkField("plate", "LEA-1234", PROFILES.AE, now)).toHaveProperty("reason");
+  expect(checkField("model", "x".repeat(41), PROFILES.AE, now)).toHaveProperty("reason");
 });

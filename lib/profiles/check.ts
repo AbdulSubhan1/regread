@@ -1,6 +1,6 @@
 import { CONFIDENCE_THRESHOLD, MAX_TEXT_FIELD } from "@/constants/config";
 import { checkChassis } from "@/lib/rules/chassis";
-import { gregorianDate, parseDmy, toIsoDate, type Calendar } from "@/lib/rules/dates";
+import { gregorianDate, parseDmy, toIsoDate } from "@/lib/rules/dates";
 import { hijriToGregorian } from "@/lib/rules/hijri";
 import { MIN_YEAR, parseYear } from "@/lib/rules/year";
 import { PROFILES } from "./index";
@@ -22,12 +22,11 @@ type Rule = { value: string } | { reason: string };
 const HIJRI_YEARS = { min: 1300, max: 1500 };
 const EARLIEST = Date.UTC(MIN_YEAR, 0, 1);
 
-function checkDate(raw: string, profile: RegionProfile, calendar: Calendar | "unknown", now: Date): Rule {
+function checkDate(raw: string, profile: RegionProfile, now: Date): Rule {
   const dmy = parseDmy(raw);
   if (!dmy) return { reason: "Use the date as DD/MM/YYYY" };
-  const hijri =
-    profile.calendars.includes("hijri") &&
-    (calendar === "hijri" || (dmy.y >= HIJRI_YEARS.min && dmy.y <= HIJRI_YEARS.max));
+  // The printed year decides, not the model's label: 1300–1500 can only be Hijri, 1950+ only Gregorian
+  const hijri = profile.calendars.includes("hijri") && dmy.y >= HIJRI_YEARS.min && dmy.y <= HIJRI_YEARS.max;
   const date = hijri ? hijriToGregorian(dmy.y, dmy.m, dmy.d) : gregorianDate(dmy);
   if (!date) return { reason: "This date doesn't exist" };
   if (date.getTime() < EARLIEST || date.getTime() > now.getTime()) {
@@ -42,13 +41,7 @@ function checkText(raw: string): Rule {
 }
 
 /** One field against one profile's rule. Used for the scan and again when the visitor confirms. */
-export function checkField(
-  name: FieldName,
-  raw: string,
-  profile: RegionProfile,
-  calendar: Calendar | "unknown",
-  now: Date,
-): Rule {
+export function checkField(name: FieldName, raw: string, profile: RegionProfile, now: Date): Rule {
   switch (name) {
     case "make":
       return { value: canonicalMake(raw).value };
@@ -64,7 +57,7 @@ export function checkField(
     case "plate":
       return checkPlate(raw, profile.plate);
     case "registrationDate":
-      return checkDate(raw, profile, calendar, now);
+      return checkDate(raw, profile, now);
   }
 }
 
@@ -95,7 +88,7 @@ export function checkRead(
     } else if (!profile) {
       fields[name] = { value: raw, confidence, status: "check", reason: "Pick the card's country to check this" };
     } else {
-      const rule = checkField(name, raw, profile, read.registrationDateCalendar, now);
+      const rule = checkField(name, raw, profile, now);
       fields[name] =
         "reason" in rule
           ? { value: null, confidence, status: "flagged", reason: rule.reason }

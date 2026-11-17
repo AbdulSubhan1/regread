@@ -39,15 +39,18 @@ export async function takeRun(visitor: string): Promise<Run> {
   const limit = limitFrom("AI_DAILY_LIMIT", DEFAULT_VISITOR_DAILY_LIMIT);
   const used = await bump(visitorKey(visitor));
   if (used > limit) {
+    // Refused before any AI call: undo both counts
     await refundRun(visitor);
+    await getStore().decr(globalKey());
     return { ok: false, reason: "visitor", remaining: 0, resetAt };
   }
   return { ok: true, remaining: limit - used, resetAt };
 }
 
-/** Gives the run back when the AI failed before producing anything. No visitor = a sample run. */
-export async function refundRun(visitor?: string): Promise<void> {
-  const store = getStore();
-  await store.decr(globalKey());
-  if (visitor) await store.decr(visitorKey(visitor));
+/**
+ * Gives the visitor their upload back when the AI failed. The app's count stays: the provider has usually counted the
+ * call already, and refunding it would let failing requests get past the global cap on the shared key.
+ */
+export async function refundRun(visitor: string): Promise<void> {
+  await getStore().decr(visitorKey(visitor));
 }

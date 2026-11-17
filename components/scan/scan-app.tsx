@@ -8,6 +8,7 @@ import { ocrFallback } from "@/lib/client/ocr-fallback";
 import { shrinkImage } from "@/lib/client/shrink-image";
 import { checkRead } from "@/lib/profiles/check";
 import { FIELDS, type CountryCode, type FieldName, type RawRead, type ScanResult } from "@/lib/profiles/types";
+import { keepEdits, nextStep, type ApiAnswer } from "@/lib/scan/client-flow";
 import { validateConfirm, type ConfirmErrors } from "@/lib/scan/confirm";
 import { ConfirmedView } from "./confirmed-view";
 import { ResultForm } from "./result-form";
@@ -19,8 +20,6 @@ type Phase =
   | { kind: "scanning"; preview: string; message: string }
   | { kind: "result"; preview: string; result: ScanResult }
   | { kind: "confirmed"; preview: string; data: Record<string, string | null> };
-
-type ApiAnswer = { ok: true; result: ScanResult } | { ok: false; status: number; error?: string };
 
 const emptyValues = () => Object.fromEntries(FIELDS.map((f) => [f, ""])) as Record<FieldName, string>;
 const valuesOf = (r: ScanResult) =>
@@ -48,9 +47,6 @@ async function callScan(body: FormData): Promise<ApiAnswer> {
   }
 }
 
-// 429 = daily limit, 502 = the AI failed (e.g. free quota used up): both fall back to reading on the device
-const aiUnavailable = (a: ApiAnswer) => !a.ok && (a.status === 429 || a.status === 502);
-
 export function ScanApp() {
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -73,14 +69,23 @@ export function ScanApp() {
     setPhase({ kind: "result", preview: previewUrl, result });
   }
 
-  async function fallback(previewUrl: string, image: Blob) {
+  // getImage runs inside the try: fetching a sample image can fail too when the network is down
+  async function fallback(previewUrl: string, getImage: () => Promise<Blob>) {
     setPhase({ kind: "scanning", preview: previewUrl, message: "The AI is busy, reading the card on your device…" });
     try {
-      showResult(previewUrl, await ocrFallback(image, null));
+      showResult(previewUrl, await ocrFallback(await getImage(), null));
     } catch {
       setPhase({ kind: "idle" });
       setUploadError(COPY.network);
     }
+  }
+
+  function handle(answer: ApiAnswer, previewUrl: string, isPdf: boolean, getImage: () => Promise<Blob>) {
+    const step = nextStep(answer, isPdf);
+    if (step.kind === "result") return showResult(previewUrl, step.result);
+    if (step.kind === "ocr") return fallback(previewUrl, getImage);
+    setPhase({ kind: "idle" });
+    setUploadError(step.message);
   }
 
   async function onFile(file: File) {
@@ -95,17 +100,7 @@ export function ScanApp() {
     setPhase({ kind: "scanning", preview: previewUrl, message: "Reading your card…" });
     const form = new FormData();
     form.append("file", body, isPdf ? file.name : "card.jpg");
-    const answer = await callScan(form);
-    if (answer.ok) return showResult(previewUrl, answer.result);
-    if (aiUnavailable(answer) || answer.status === 0) {
-      if (isPdf) {
-        setPhase({ kind: "idle" });
-        return setUploadError(COPY.pdfBusy);
-      }
-      return fallback(previewUrl, body);
-    }
-    setPhase({ kind: "idle" });
-    setUploadError(UPLOAD_ERRORS[answer.error ?? "type"] ?? UPLOAD_ERRORS.type);
+    handle(await callScan(form), previewUrl, isPdf, async () => body);
   }
 
   async function onSample(id: string) {
@@ -114,20 +109,16 @@ export function ScanApp() {
     setPhase({ kind: "scanning", preview: previewUrl, message: "Reading the sample card…" });
     const form = new FormData();
     form.append("sampleId", id);
-    const answer = await callScan(form);
-    if (answer.ok) return showResult(previewUrl, answer.result);
-    if (aiUnavailable(answer) || answer.status === 0) {
-      const image = await fetch(previewUrl).then((r) => r.blob());
-      return fallback(previewUrl, image);
-    }
-    setPhase({ kind: "idle" });
-    setUploadError(UPLOAD_ERRORS.sample);
+    handle(await callScan(form), previewUrl, false, () => fetch(previewUrl).then((r) => r.blob()));
   }
 
+  // Re-checks what was read with the new country's rules; fields the visitor typed in keep their value
   function onCountry(country: CountryCode | null) {
     if (phase.kind !== "result") return;
     const result = checkRead(rawReadOf(phase.result), country, phase.result.source);
-    showResult(phase.preview, result);
+    setValues(keepEdits(valuesOf(result), values, edited));
+    setErrors({});
+    setPhase({ kind: "result", preview: phase.preview, result });
   }
 
   function onConfirm() {

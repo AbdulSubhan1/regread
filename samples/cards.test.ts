@@ -40,7 +40,7 @@ test.each(SAMPLES.map((s) => [s.id, s] as const))("%s: what the card prints chec
       expect(raw[f], `${f} should be blank on the card`).toBe("");
       continue;
     }
-    expect(checkField(f, raw[f], PROFILES[s.country], "unknown", now), f).toEqual({ value: s.truth[f] });
+    expect(checkField(f, raw[f], PROFILES[s.country], now), f).toEqual({ value: s.truth[f] });
   }
 });
 

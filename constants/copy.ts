@@ -22,6 +22,7 @@ export const COPY = {
   sampleButton: "No card? Try a sample",
   pdfBusy: "The AI is busy. Please upload a photo of the card instead.",
   network: "We couldn't reach the server. Check your connection and try again.",
+  generic: "Something went wrong. Please try again.",
 } as const;
 
 export const UPLOAD_ERRORS: Record<string, string> = {

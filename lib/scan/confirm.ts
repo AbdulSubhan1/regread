@@ -38,7 +38,7 @@ export function validateConfirm(
     }
     if (!country) continue;
     const text = name === "registrationDate" ? isoToDmy(raw) : raw;
-    const rule = checkField(name, text, PROFILES[country], "gregorian", now);
+    const rule = checkField(name, text, PROFILES[country], now);
     if ("reason" in rule) errors[name] = rule.reason;
     else values[name] = rule.value;
   }

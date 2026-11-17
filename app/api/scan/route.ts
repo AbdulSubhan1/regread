@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     return json(result, 200, { "X-Runs-Remaining": String(run.remaining) });
   } catch {
     logFailure();
-    await refundRun(visitor);
+    // A visitor who drops the request on purpose doesn't get the run back
+    if (!req.signal.aborted) await refundRun(visitor);
     return json({ error: "provider" }, 502);
   }
 }
@@ -54,7 +55,6 @@ async function scanSample(id: string, signal: AbortSignal) {
     return json(result, 200);
   } catch {
     logFailure();
-    await refundRun();
     return json({ error: "provider" }, 502);
   }
 }

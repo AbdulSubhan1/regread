@@ -85,7 +85,7 @@ function guessCountry(values: Partial<Record<FieldName, string>>): CountryCode |
   let best: { code: CountryCode | null; score: number } = { code: null, score: 0 };
   for (const code of COUNTRY_CODES) {
     const score = (["plate", "chassisNumber", "registrationDate"] as const).filter(
-      (f) => values[f] && "value" in checkField(f, values[f], PROFILES[code], "unknown", now),
+      (f) => values[f] && "value" in checkField(f, values[f], PROFILES[code], now),
     ).length;
     if (score > best.score) best = { code, score };
   }
