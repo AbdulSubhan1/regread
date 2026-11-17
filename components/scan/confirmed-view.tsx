@@ -16,7 +16,9 @@ export function ConfirmedView({ data, onRestart }: { data: Record<string, string
         {JSON.stringify(data, null, 2)}
       </pre>
       <div className="mt-6">
-        <Button onClick={onRestart}>Scan another card</Button>
+        <Button onClick={onRestart} data-pulse-event="scan_restarted" data-pulse-label="confirmed">
+          Scan another card
+        </Button>
       </div>
     </section>
   );

@@ -26,3 +26,6 @@ export const MAX_PDF_PAGES = 2;
 export const BURST_PER_MINUTE = 3;
 
 export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
+
+/** Pulse, Abdul's own monitor (github.com/AbdulSubhan1/monitor): uptime, page views, events, logs and API calls. */
+export const PULSE_URL = "https://abdulsubhan-pulse.vercel.app";

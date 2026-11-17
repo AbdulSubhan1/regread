@@ -42,6 +42,7 @@ Without Upstash env vars, local dev keeps the daily counters in memory.
 | `ALLOWED_ORIGINS`                                                     | Sites that may call `/api/scan` from their pages, comma-separated (e.g. `https://brokwise.vercel.app`) |
 | `VISITOR_SALT`                                                        | Secret for hashing visitor IPs; required in production                                                 |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` (or `KV_REST_API_URL` / `_TOKEN`) | Daily counters and cached sample results; required in production                                       |
+| `MONITOR_LOG_TOKEN`                                                   | RegRead's token for Pulse; monitoring is off when empty                                                |
 
 ## Scripts
 
@@ -78,3 +79,17 @@ Uploads must really be a JPG, PNG, WebP or PDF (checked from the file's bytes, n
 and 2 pages. Each visitor gets 3 uploads a minute and 10 a day (an IPv6 visitor is their /64 network), and the app
 stops at 200 AI calls a day. Only RegRead's own page and the sites in `ALLOWED_ORIGINS` may post. Details:
 `docs/kb/engineering-highlights.md#upload-security`.
+
+## Monitoring
+
+[Pulse](https://abdulsubhan-pulse.vercel.app), my own monitor, watches RegRead:
+
+- uptime every 10 minutes
+- page views, Core Web Vitals and browser errors from a cookie-free beacon
+- a named event for every step: `card_uploaded`, `sample_picked`, `card_read` (`ai · AE`), `ocr_fallback`,
+  `upload_refused`, `details_confirmed` and the rest
+- each Gemini call (status and time), server errors, a warning when the daily AI cap is hit
+- refused uploads as security events, so a script hammering the demo raises an alert
+
+Only status codes, timings, reasons and the hashed visitor id are sent. The card's image and its details never leave
+for Pulse.

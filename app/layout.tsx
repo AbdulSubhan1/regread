@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope } from "next/font/google";
+import Script from "next/script";
+import { PULSE_URL } from "@/constants/config";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
@@ -14,7 +16,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${manrope.variable} ${jetbrains.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        {/* Pulse: cookie-free page views, named events, browser errors and Core Web Vitals */}
+        <Script src={`${PULSE_URL}/beacon.js`} data-project="regread" strategy="afterInteractive" />
+      </body>
     </html>
   );
 }

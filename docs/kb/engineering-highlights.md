@@ -85,6 +85,20 @@ before the AI call, and a refused request spends no run. Design: `docs/superpowe
 **Considered, not added:** Vercel BotID (strong against bots, but a new package) and Vercel Firewall rules (dashboard
 config, not testable in the repo).
 
+## Monitoring (Pulse)
+
+RegRead reports to [Pulse](https://github.com/AbdulSubhan1/monitor), my own monitor, with its own log token. Monitoring
+can never break a scan: a 2-second timeout, every failure ignored, reports sent after the response with `after()`, and
+nothing sent while `MONITOR_LOG_TOKEN` is empty.
+
+| What                             | Detail                                                                                                                                                                                                                                                                                                                                                                         | Where                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| **Every step is an event**       | The beacon (cookie-free) sends page views, Web Vitals and browser errors. Each step is a named event with a label: `card_uploaded` (photo/pdf), `sample_picked` (id), `card_read` (`ai · AE`, `ocr · PK`), `ocr_fallback` (status), `upload_refused` (reason), `country_changed`, `confirm_invalid` (first bad field), `details_confirmed`, `scan_restarted`, `source_opened`. | `lib/client/pulse.ts`, `components/scan/`        |
+| **AI calls timed**               | Each Gemini call is reported with its status and time; a cached sample makes none. After the SDK's retry the status comes from the last attempt. Only the error's name is sent: its message can quote the request.                                                                                                                                                             | `app/api/scan/route.ts` (`timedScan`)            |
+| **Refusals are security events** | Every refused upload (`bad_origin`, `too_large`, `bad_file_type`, `pdf_too_big`, `pdf_too_many_pages`, `burst_limit`, `daily_limit`) goes to Pulse's security feed, so a script hammering the demo raises Pulse's "pushing on demo limits" alert. An empty form or unknown sample is a mistake, not an attack, and isn't sent.                                                 | `lib/pulse/server.ts` (7 tests), `route.test.ts` |
+| **A flood can't flood Pulse**    | Refusals are counted per visitor in RegRead's Redis; at most 6 per visitor per 15 minutes are sent (one over Pulse's alert rule of 5). The app's daily AI cap is one warning a day, not one per refused visitor.                                                                                                                                                               | `lib/pulse/server.ts`                            |
+| **No card data leaves**          | Pulse gets the hashed visitor id (never the IP), status codes, timings and reasons. Events name a step, never a value from the card. Uncaught server errors are cut to 300 characters.                                                                                                                                                                                         | `instrumentation.ts`, `AGENTS.md`                |
+
 ## Used by other sites
 
 - **CORS allow list, not open.** `ALLOWED_ORIGINS` names the sites (Brokwise) that may call `/api/scan` from their pages.

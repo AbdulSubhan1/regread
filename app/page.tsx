@@ -63,7 +63,12 @@ export default function Home() {
       <footer className="border-t border-line">
         <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-soft">
           A portfolio project by Abdul Subhan ·{" "}
-          <Link href="https://github.com/AbdulSubhan1/regread" className="font-semibold text-brand hover:underline">
+          <Link
+            href="https://github.com/AbdulSubhan1/regread"
+            className="font-semibold text-brand hover:underline"
+            data-pulse-event="source_opened"
+            data-pulse-label="footer"
+          >
             Source on GitHub
           </Link>
         </div>

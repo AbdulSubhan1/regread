@@ -19,6 +19,7 @@ These rules apply to every person and AI model working in this repo. `npm run ch
 | `lib/ai/`, `lib/scan/`                    | Model adapter, schema, prompt, reading a card                    |
 | `lib/limits/`, `lib/store/`, `lib/cache/` | Daily limits, visitor id, Redis, sample cache                    |
 | `lib/ocr/`, `lib/client/`                 | Browser fallback and browser-only helpers                        |
+| `lib/pulse/`                              | Reports to Pulse, the monitor: errors, AI calls, refused uploads |
 | `samples/`                                | Made-up specimen card templates and their ground truth           |
 | `docs/`                                   | Spec, plan, accuracy, KB                                         |
 
@@ -31,6 +32,8 @@ These rules apply to every person and AI model working in this repo. `npm run ch
 
 - The AI schema has no owner fields. Never add one.
 - Images, request bodies and model output are never stored or logged. Log status codes only.
+- Pulse (the monitor) gets status codes, timings, refusal reasons and the hashed visitor id; events name a step,
+  never a field value from the card.
 - The only server-side state is the daily counters and the cached results of the made-up sample cards.
 - Keys live only in server env vars. Nothing secret uses the `NEXT_PUBLIC_` prefix.
 
