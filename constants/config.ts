@@ -12,3 +12,8 @@ export const DEFAULT_GLOBAL_DAILY_LIMIT = 200;
 
 /** Cached sample results live a week; a new AI_MODEL starts fresh. */
 export const SAMPLE_CACHE_SECONDS = 604_800;
+
+/** Largest upload we accept. The browser shrinks photos well below this; PDFs are sent as-is. */
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
