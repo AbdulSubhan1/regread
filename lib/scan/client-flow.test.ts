@@ -38,3 +38,16 @@ test("a re-check keeps what the visitor typed and refreshes the rest", () => {
   const current: Record<FieldName, string> = { ...blank, plate: "LEB-9999", year: "1999" };
   expect(keepEdits(next, current, { plate: true })).toEqual({ ...blank, plate: "LEB-9999", year: "2014" });
 });
+
+test("a PDF that is too big or too long says so", () => {
+  expect(nextStep({ ok: false, status: 400, error: "pdfSize" }, true)).toEqual({
+    kind: "error",
+    message: UPLOAD_ERRORS.pdfSize,
+  });
+  expect(nextStep({ ok: false, status: 400, error: "pages" }, true)).toEqual({
+    kind: "error",
+    message: UPLOAD_ERRORS.pages,
+  });
+  expect(UPLOAD_ERRORS.pdfSize).toMatch(/1 MB/);
+  expect(UPLOAD_ERRORS.pages).toMatch(/2 pages/);
+});

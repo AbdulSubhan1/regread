@@ -30,6 +30,8 @@ export const UPLOAD_ERRORS: Record<string, string> = {
   type: "That file type isn't supported. Use a JPG, PNG or WebP photo, or a PDF.",
   heic: "iPhone HEIC photos aren't supported. Take a screenshot of the photo, or share it as JPG.",
   size: "That file is over 4 MB. Try a smaller photo.",
+  pdfSize: "That PDF is over 1 MB. Upload a photo of the card instead.",
+  pages: "That PDF has more than 2 pages. Upload only the card's pages, or a photo of the card.",
   sample: "That sample isn't available. Pick another one.",
   consent: "Tick “I understand” before uploading your own card.",
 };

@@ -66,6 +66,25 @@ Tested by `check.test.ts` (18), `confirm.test.ts` (7), and checked in the browse
 | **Samples by id, not upload** | The browser sends `sampleId`; the server reads the image from disk (`outputFileTracingIncludes` ships `public/samples` with the function). Nobody can pass off an upload as a cached sample.                                                                                                        | `lib/scan/samples-server.ts`, `next.config.ts` |
 | **One Redis, prefixed keys**  | All keys start with `regread:`, so the free Upstash database can be shared with other projects. Local dev uses an in-memory store; production refuses to run without Redis.                                                                                                                         | `lib/store/redis.ts`                           |
 
+## Upload security
+
+A public demo on a shared free key: nobody should burn the quota, slip in junk files or frame the page. Every check runs
+before the AI call, and a refused request spends no run. Design: `docs/superpowers/specs/2026-11-17-upload-security-design.md`.
+
+| What                            | Detail                                                                                                                                                                                                                                                                    | Where                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Bytes must match the label**  | The browser's declared type is a label anyone can set. The route reads the first bytes (JPEG, PNG, WebP, PDF signatures) and refuses a file whose bytes disagree with its label, e.g. HTML or a PDF named `.jpg`.                                                         | `lib/http/file-check.ts` (4 tests), `route.test.ts` |
+| **Small, short PDFs only**      | PDFs go to the AI as-is and every page costs quota, so a PDF may be at most 1 MB (photos keep 4 MB; the browser shrinks them) and 2 pages. Pages are counted from the file's page markers without a PDF library: the larger of the page objects and the biggest `/Count`. | `lib/http/file-check.ts`, `constants/config.ts`     |
+| **Size refused before reading** | A `Content-Length` over the cap is a 413 before the body is parsed into memory.                                                                                                                                                                                           | `app/api/scan/route.ts`                             |
+| **IPv6 counts by /64**          | One home or phone gets a whole IPv6 /64 and can pick a new address in it at will, so a visitor is their /64 (and `::ffff:` IPv4 is plain IPv4). Otherwise each new address would get a fresh 10 a day.                                                                    | `lib/limits/visitor.ts` (2 tests)                   |
+| **3 uploads a minute**          | On top of 10 a day, so a script can't spend a visitor's day in one second. Over it is a 429 `burst`; the page then reads on the device like any 429. A refused upload doesn't count.                                                                                      | `lib/limits/burst.ts` (2 tests)                     |
+| **Origin check on POST**        | Browsers always send `Origin` on a POST. Only RegRead's own host and `ALLOWED_ORIGINS` may spend the quota; no Origin (curl, scripts) or another site is a 403. It can be faked, so it only stops casual scripts; the caps are the real limit.                            | `lib/http/cors.ts` (3 tests)                        |
+| **Card text is data**           | Text printed on a card could try to instruct the model. The prompt says card text is data, never instructions; the answer is still bound to the car-field schema and checked by the rules.                                                                                | `lib/ai/prompt.ts`                                  |
+| **Browser safety headers**      | `frame-ancestors 'none'` and `X-Frame-Options: DENY` (no click tricks in a frame), `nosniff`, a strict referrer policy and no camera/mic/location. No script rules yet: Next's inline scripts and the OCR's CDN worker need nonces.                                       | `lib/http/security-headers.ts`, `next.config.ts`    |
+
+**Considered, not added:** Vercel BotID (strong against bots, but a new package) and Vercel Firewall rules (dashboard
+config, not testable in the repo).
+
 ## Used by other sites
 
 - **CORS allow list, not open.** `ALLOWED_ORIGINS` names the sites (Brokwise) that may call `/api/scan` from their pages.
