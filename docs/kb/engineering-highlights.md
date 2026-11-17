@@ -2,7 +2,7 @@
 
 What RegRead does beyond "it works", and why. RegRead reads a vehicle registration card (photo or PDF) and returns clean,
 checked car details for an insurance quote form. Each item says the decision, why it matters in a real business, and where
-it lives and is tested. 172 unit tests in 17 files (`npm test`); one Playwright spec for the main flow (`npm run test:e2e`).
+it lives and is tested. 175 unit tests in 17 files (`npm test`); one Playwright spec for the main flow (`npm run test:e2e`).
 
 ## Architecture decisions
 
@@ -65,6 +65,13 @@ Tested by `check.test.ts` (18), `confirm.test.ts` (7), and checked in the browse
 | **Sample results cached**     | A sample is read once per model and cached for a week in Redis (`regread:sample:<id>:<model>`), so demo clicks cost no AI calls and no visitor uploads. A failed read is not cached and still counts against the app's cap. A new `AI_MODEL` starts fresh.                                          | `lib/cache/sample-cache.ts`, `route.test.ts`   |
 | **Samples by id, not upload** | The browser sends `sampleId`; the server reads the image from disk (`outputFileTracingIncludes` ships `public/samples` with the function). Nobody can pass off an upload as a cached sample.                                                                                                        | `lib/scan/samples-server.ts`, `next.config.ts` |
 | **One Redis, prefixed keys**  | All keys start with `regread:`, so the free Upstash database can be shared with other projects. Local dev uses an in-memory store; production refuses to run without Redis.                                                                                                                         | `lib/store/redis.ts`                           |
+
+## Used by other sites
+
+- **CORS allow list, not open.** `ALLOWED_ORIGINS` names the sites (Brokwise) that may call `/api/scan` from their pages.
+  Any other origin gets no `Access-Control-Allow-Origin`, so browsers block it from reading answers. Errors carry the
+  header too, so the calling site can show why. The per-visitor and global limits still apply to every call.
+  Where: `lib/http/cors.ts`, `route.test.ts` (3 tests).
 
 ## Fallback when the AI is down
 

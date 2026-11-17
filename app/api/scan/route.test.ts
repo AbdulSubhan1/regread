@@ -9,7 +9,7 @@ vi.mock("@/lib/scan/samples-server", () => ({
     id === "pk-clean" ? { data: new Uint8Array([1]), mediaType: "image/jpeg" } : null,
 }));
 
-const { POST } = await import("./route");
+const { OPTIONS, POST } = await import("./route");
 
 const result = { country: "PK", source: "ai" } as ScanResult;
 
@@ -21,13 +21,13 @@ beforeEach(() => {
   scanCard.mockResolvedValue(result);
 });
 
-function post(fields: Record<string, string | File>, ip = "203.0.113.7", signal?: AbortSignal) {
+function post(fields: Record<string, string | File>, ip = "203.0.113.7", signal?: AbortSignal, origin?: string) {
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
   const req = new Request("http://localhost/api/scan", {
     method: "POST",
     body: form,
-    headers: { "x-forwarded-for": ip },
+    headers: { "x-forwarded-for": ip, ...(origin ? { origin } : {}) },
   });
   // On the server req.signal aborts when the client drops; here we hand the route a signal we control
   if (signal) Object.defineProperty(req, "signal", { value: signal });
@@ -124,4 +124,38 @@ test("a visitor who drops the request gets no refund", async () => {
   });
   await post({ file: photo() }, "203.0.113.7", abort.signal);
   expect((await post({ file: photo() })).status).toBe(429);
+});
+
+const BROKWISE = "https://brokwise.vercel.app";
+
+test("a site on the allow list may call the scan from the browser", async () => {
+  vi.stubEnv("ALLOWED_ORIGINS", `${BROKWISE}, http://localhost:3000`);
+  const pre = await OPTIONS(
+    new Request("http://localhost/api/scan", { method: "OPTIONS", headers: { origin: BROKWISE } }),
+  );
+  expect(pre.status).toBe(204);
+  expect(pre.headers.get("Access-Control-Allow-Origin")).toBe(BROKWISE);
+  expect(pre.headers.get("Access-Control-Allow-Methods")).toContain("POST");
+
+  const res = await post({ file: photo() }, "203.0.113.7", undefined, BROKWISE);
+  expect(res.headers.get("Access-Control-Allow-Origin")).toBe(BROKWISE);
+  expect(res.headers.get("Access-Control-Expose-Headers")).toContain("X-Runs-Remaining");
+  expect(res.headers.get("Vary")).toContain("Origin");
+});
+
+test("errors carry the CORS header too, so the calling site can read why", async () => {
+  vi.stubEnv("ALLOWED_ORIGINS", BROKWISE);
+  const res = await post({}, "203.0.113.7", undefined, BROKWISE);
+  expect(res.status).toBe(400);
+  expect(res.headers.get("Access-Control-Allow-Origin")).toBe(BROKWISE);
+});
+
+test("any other site gets no CORS header, so browsers block it", async () => {
+  vi.stubEnv("ALLOWED_ORIGINS", BROKWISE);
+  const res = await post({ file: photo() }, "203.0.113.7", undefined, "https://evil.example");
+  expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  const pre = await OPTIONS(
+    new Request("http://localhost/api/scan", { method: "OPTIONS", headers: { origin: "https://evil.example" } }),
+  );
+  expect(pre.headers.get("Access-Control-Allow-Origin")).toBeNull();
 });
