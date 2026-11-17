@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Runs on every commit. Never skip it with --no-verify; fix what it reports.
+set -e
+npm run check
+npm test
