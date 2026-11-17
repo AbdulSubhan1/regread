@@ -25,3 +25,14 @@ test("production refuses to run without a salt", () => {
   vi.stubEnv("VISITOR_SALT", "");
   expect(() => visitorId(headers("203.0.113.7"))).toThrow(/VISITOR_SALT/);
 });
+
+test("IPv6 addresses in one /64 network are one visitor, since one home gets the whole block", () => {
+  const a = visitorId(headers("2001:db8:aa:bb::1"), "salt-a");
+  expect(visitorId(headers("2001:db8:aa:bb:ffff:1:2:3"), "salt-a")).toBe(a);
+  expect(visitorId(headers("2001:0db8:00aa:00bb:0:0:0:9"), "salt-a")).toBe(a);
+  expect(visitorId(headers("2001:db8:aa:bc::1"), "salt-a")).not.toBe(a);
+});
+
+test("an IPv4 address written as IPv6 is the same visitor as the plain IPv4", () => {
+  expect(visitorId(headers("::ffff:203.0.113.7"), "salt-a")).toBe(visitorId(headers("203.0.113.7"), "salt-a"));
+});

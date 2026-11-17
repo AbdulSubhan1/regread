@@ -13,28 +13,53 @@ const { OPTIONS, POST } = await import("./route");
 
 const result = { country: "PK", source: "ai" } as ScanResult;
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-17T08:00:00Z"));
   resetMemoryStore();
   scanCard.mockReset();
   scanCard.mockResolvedValue(result);
 });
 
-function post(fields: Record<string, string | File>, ip = "203.0.113.7", signal?: AbortSignal, origin?: string) {
+type PostOptions = { ip?: string; signal?: AbortSignal; origin?: string | null; headers?: Record<string, string> };
+
+// Each call lands in a new minute, so only the burst tests meet the per-minute limit
+function post(fields: Record<string, string | File>, opts: PostOptions = {}) {
+  const { ip = "203.0.113.7", signal, origin = "http://localhost", headers = {} } = opts;
+  vi.setSystemTime(Date.now() + 61_000);
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
   const req = new Request("http://localhost/api/scan", {
     method: "POST",
     body: form,
-    headers: { "x-forwarded-for": ip, ...(origin ? { origin } : {}) },
+    headers: { "x-forwarded-for": ip, ...(origin ? { origin } : {}), ...headers },
   });
   // On the server req.signal aborts when the client drops; here we hand the route a signal we control
   if (signal) Object.defineProperty(req, "signal", { value: signal });
   return POST(req);
 }
 
-const photo = (type = "image/jpeg", size = 1000) => new File([new Uint8Array(size)], "card.jpg", { type });
+const JPEG = [0xff, 0xd8, 0xff, 0xe0];
+
+function photo(type = "image/jpeg", size = 1000, head = JPEG) {
+  const data = new Uint8Array(size);
+  data.set(head);
+  return new File([data], "card.jpg", { type });
+}
+
+const pdfFile = (pages: number, size = 2000) => {
+  const text = `%PDF-1.4\n${"<< /Type /Page >>\n".repeat(pages)}`;
+  return photo(
+    "application/pdf",
+    size,
+    [...text].map((c) => c.charCodeAt(0)),
+  );
+};
 
 test("an empty form is a 400 missing", async () => {
   const res = await post({});
@@ -105,7 +130,7 @@ test("a failed upload still counts against the app's daily cap", async () => {
   vi.stubEnv("AI_GLOBAL_DAILY_LIMIT", "1");
   scanCard.mockRejectedValueOnce(new Error("quota"));
   expect((await post({ file: photo() })).status).toBe(502);
-  expect(await (await post({ file: photo() }, "198.51.100.9")).json()).toMatchObject({ reason: "global" });
+  expect(await (await post({ file: photo() }, { ip: "198.51.100.9" })).json()).toMatchObject({ reason: "global" });
 });
 
 test("a failed sample read still counts against the app's daily cap", async () => {
@@ -122,7 +147,7 @@ test("a visitor who drops the request gets no refund", async () => {
     abort.abort();
     throw new Error("aborted");
   });
-  await post({ file: photo() }, "203.0.113.7", abort.signal);
+  await post({ file: photo() }, { signal: abort.signal });
   expect((await post({ file: photo() })).status).toBe(429);
 });
 
@@ -137,7 +162,7 @@ test("a site on the allow list may call the scan from the browser", async () => 
   expect(pre.headers.get("Access-Control-Allow-Origin")).toBe(BROKWISE);
   expect(pre.headers.get("Access-Control-Allow-Methods")).toContain("POST");
 
-  const res = await post({ file: photo() }, "203.0.113.7", undefined, BROKWISE);
+  const res = await post({ file: photo() }, { origin: BROKWISE });
   expect(res.headers.get("Access-Control-Allow-Origin")).toBe(BROKWISE);
   expect(res.headers.get("Access-Control-Expose-Headers")).toContain("X-Runs-Remaining");
   expect(res.headers.get("Vary")).toContain("Origin");
@@ -145,17 +170,87 @@ test("a site on the allow list may call the scan from the browser", async () => 
 
 test("errors carry the CORS header too, so the calling site can read why", async () => {
   vi.stubEnv("ALLOWED_ORIGINS", BROKWISE);
-  const res = await post({}, "203.0.113.7", undefined, BROKWISE);
+  const res = await post({}, { origin: BROKWISE });
   expect(res.status).toBe(400);
   expect(res.headers.get("Access-Control-Allow-Origin")).toBe(BROKWISE);
 });
 
 test("any other site gets no CORS header, so browsers block it", async () => {
   vi.stubEnv("ALLOWED_ORIGINS", BROKWISE);
-  const res = await post({ file: photo() }, "203.0.113.7", undefined, "https://evil.example");
+  const res = await post({ file: photo() }, { origin: "https://evil.example" });
+  expect(res.status).toBe(403);
   expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
   const pre = await OPTIONS(
     new Request("http://localhost/api/scan", { method: "OPTIONS", headers: { origin: "https://evil.example" } }),
   );
   expect(pre.headers.get("Access-Control-Allow-Origin")).toBeNull();
+});
+
+test("a call with no Origin (a script, not a browser) is a 403 and spends nothing", async () => {
+  const res = await post({ file: photo() }, { origin: null });
+  expect(res.status).toBe(403);
+  expect(await res.json()).toEqual({ error: "origin" });
+  expect(scanCard).not.toHaveBeenCalled();
+  expect((await post({ file: photo() })).headers.get("X-Runs-Remaining")).toBe("9");
+});
+
+test("a request that says it is over the size cap is refused before it is read", async () => {
+  const res = await post({ file: photo() }, { headers: { "content-length": String(50 * 1024 * 1024) } });
+  expect(res.status).toBe(413);
+  expect(await res.json()).toEqual({ error: "size" });
+});
+
+test("a file labelled as a photo whose bytes are something else is a 400 type", async () => {
+  const html = [..."<html>"].map((c) => c.charCodeAt(0));
+  const res = await post({ file: photo("image/jpeg", 1000, html) });
+  expect(await res.json()).toEqual({ error: "type" });
+  expect(scanCard).not.toHaveBeenCalled();
+});
+
+test("a PDF labelled as a photo is a 400 type", async () => {
+  const res = await post({
+    file: photo(
+      "image/jpeg",
+      1000,
+      [..."%PDF-"].map((c) => c.charCodeAt(0)),
+    ),
+  });
+  expect(await res.json()).toEqual({ error: "type" });
+});
+
+test("a one-page PDF is read", async () => {
+  expect((await post({ file: pdfFile(1) })).status).toBe(200);
+  expect(scanCard).toHaveBeenCalledWith(expect.objectContaining({ mediaType: "application/pdf" }), expect.anything());
+});
+
+test("a PDF over 1 MB is a 400 pdfSize", async () => {
+  const res = await post({ file: pdfFile(1, 1024 * 1024 + 1) });
+  expect(await res.json()).toEqual({ error: "pdfSize" });
+});
+
+test("a PDF with more than 2 pages is a 400 pages", async () => {
+  const res = await post({ file: pdfFile(3) });
+  expect(await res.json()).toEqual({ error: "pages" });
+  expect(scanCard).not.toHaveBeenCalled();
+});
+
+test("the 4th upload in one minute is a 429 burst and doesn't use a daily run", async () => {
+  const minute = Date.now() + 61_000;
+  const sameMinute = async () => {
+    vi.setSystemTime(minute);
+    const form = new FormData();
+    form.append("file", photo());
+    return POST(
+      new Request("http://localhost/api/scan", {
+        method: "POST",
+        body: form,
+        headers: { "x-forwarded-for": "203.0.113.7", origin: "http://localhost" },
+      }),
+    );
+  };
+  for (let i = 0; i < 3; i++) expect((await sameMinute()).status).toBe(200);
+  const res = await sameMinute();
+  expect(res.status).toBe(429);
+  expect(await res.json()).toMatchObject({ error: "limit", reason: "burst" });
+  expect((await post({ file: photo() })).headers.get("X-Runs-Remaining")).toBe("6");
 });

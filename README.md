@@ -71,3 +71,10 @@ in `lib/profiles/types.ts` and one line to `lib/profiles/index.ts`. The checker 
 Images are processed in memory and never stored or logged. On the free Gemini plan Google may use uploaded images to
 improve its products; the page says so and asks for consent before an own-card upload. The sample cards are invented
 designs with fake people and cars.
+
+## Upload safety
+
+Uploads must really be a JPG, PNG, WebP or PDF (checked from the file's bytes, not its name). PDFs may be at most 1 MB
+and 2 pages. Each visitor gets 3 uploads a minute and 10 a day (an IPv6 visitor is their /64 network), and the app
+stops at 200 AI calls a day. Only RegRead's own page and the sites in `ALLOWED_ORIGINS` may post. Details:
+`docs/kb/engineering-highlights.md#upload-security`.

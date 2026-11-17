@@ -16,4 +16,13 @@ export const SAMPLE_CACHE_SECONDS = 604_800;
 /** Largest upload we accept. The browser shrinks photos well below this; PDFs are sent as-is. */
 export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
+/** Largest PDF we accept. A scanned card is one or two pages, well under this. */
+export const MAX_PDF_BYTES = 1024 * 1024;
+
+/** Most PDF pages we send to the AI: a card's front and back. Every page costs quota. */
+export const MAX_PDF_PAGES = 2;
+
+/** Uploads one visitor may start in a minute, on top of the daily limit. */
+export const BURST_PER_MINUTE = 3;
+
 export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;

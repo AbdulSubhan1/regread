@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ACCEPTED_TYPES, MAX_UPLOAD_BYTES } from "@/constants/config";
+import { ACCEPTED_TYPES, MAX_PDF_BYTES, MAX_UPLOAD_BYTES } from "@/constants/config";
 import { COPY, UPLOAD_ERRORS } from "@/constants/copy";
 import { Picture } from "@/components/ui";
 import { ocrFallback } from "@/lib/client/ocr-fallback";
@@ -93,6 +93,7 @@ export function ScanApp() {
     if (/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)) return setUploadError(UPLOAD_ERRORS.heic);
     if (!(ACCEPTED_TYPES as readonly string[]).includes(file.type)) return setUploadError(UPLOAD_ERRORS.type);
     const isPdf = file.type === "application/pdf";
+    if (isPdf && file.size > MAX_PDF_BYTES) return setUploadError(UPLOAD_ERRORS.pdfSize);
     const body = isPdf ? file : await shrinkImage(file);
     if (body.size > MAX_UPLOAD_BYTES) return setUploadError(UPLOAD_ERRORS.size);
 
